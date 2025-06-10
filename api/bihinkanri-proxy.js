@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         
-        const apiResponse = await fetch(`https://api.bihinkanri.cloud/public-prod/spec-forms?jan_code=${encodeURIComponent(jan_code)}`, {
+        const apiResponse = await fetch(`https://api.bihinkanri.cloud/public-test/spec-forms?jan_cd=${encodeURIComponent(jan_code)}`, {
             method: 'GET',
             headers: {
                 'X-API-KEY': 'ApiKey_e1dd7831-baea-447f-a047-435dbcd3f26d',
