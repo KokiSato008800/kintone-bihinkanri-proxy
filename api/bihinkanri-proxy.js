@@ -72,6 +72,9 @@ export default async function handler(req, res) {
         // データが空の場合は仮データを使用
         const hasRealData = data.keys && data.keys.length > 0;
         const responseData = hasRealData ? data : {
+            name: `サンプル製品 (JAN: ${jan_code})`,
+            manufacturer: "サンプルメーカー",
+            model: `MODEL-${jan_code.slice(-4)}`,
             keys: [
                 "転送速度: USB 3.0",
                 "ポート数: 4ポート",
