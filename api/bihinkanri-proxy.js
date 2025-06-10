@@ -69,17 +69,35 @@ export default async function handler(req, res) {
             fullResponse: data
         });
         
-        // 成功レスポンス（デバッグ情報付き）
+        // データが空の場合は仮データを使用
+        const hasRealData = data.keys && data.keys.length > 0;
+        const responseData = hasRealData ? data : {
+            keys: [
+                "転送速度: USB 3.0",
+                "ポート数: 4ポート",
+                "重量（g）: 150",
+                "材質: プラスチック",
+                "データ転送方法: USB",
+                "サイズ（外形寸法高さ、幅、長さ）: 10cm x 5cm x 2cm",
+                "表示内容: LED インジケーター",
+                "対応OS: Windows, Mac, Linux",
+                "電源: USBバスパワー",
+                "保証期間: 1年間"
+            ]
+        };
+        
+        // 成功レスポンス（仮データ対応）
         res.status(200).json({
             success: true,
             janCode: jan_code,
-            data: data,
+            data: responseData,
+            dataSource: hasRealData ? 'api' : 'mock',
             debug: {
                 apiStatus: apiResponse.status,
                 dataStructure: Object.keys(data),
                 keysCount: data.keys ? data.keys.length : 0,
-                hasKeys: Boolean(data.keys),
-                dataType: typeof data
+                hasRealData: hasRealData,
+                usedMockData: !hasRealData
             },
             timestamp: new Date().toISOString()
         });
