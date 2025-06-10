@@ -5,12 +5,6 @@
       "runtime": "@vercel/node@18"
     }
   },
-  "routes": [
-    {
-      "src": "/api/bihinkanri-proxy",
-      "dest": "/api/bihinkanri-proxy.js"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
