@@ -75,31 +75,36 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('❌ プロキシエラー:', error.name, error.message);
         
-        // 開発環境用：常にモックデータを返す
-        const mockData = {
-            name: `モック製品 (JAN: ${req.query.jan_code})`,
-            manufacturer: 'モックメーカー',
-            model: `MODEL-${req.query.jan_code?.slice(-4) || '0000'}`,
-            keys: [
-                '転送速度: USB 3.0',
-                'ポート数: 4',
-                '重量（g）: 150',
-                '材質: プラスチック',
-                'データ転送方法: USB',
-                'サイズ（外形寸法高さ、幅、長さ）: 10x5x2cm',
-                '表示内容: LED インジケーター'
-            ]
-        };
+        // エラーの詳細をログ出力
+        if (error.name === 'AbortError') {
+            console.log('⏰ タイムアウトエラー: 10秒以内にAPIから応答がありませんでした');
+        } else if (error.message.includes('fetch')) {
+            console.log('🌐 ネットワークエラー: 外部APIへの接続に失敗しました');
+        }
         
-        console.log('📦 モックデータを返します:', mockData);
-        
-        // 成功レスポンスとしてモックデータを返す
-        res.status(200).json({
-            success: true,
+        // 実際のAPIエラーを返す（デバッグ用）
+        res.status(500).json({
+            success: false,
+            error: 'API呼び出しエラー',
+            errorType: error.name,
+            message: error.message,
             janCode: req.query.jan_code,
-            data: mockData,
             timestamp: new Date().toISOString(),
-            note: 'モックデータ（開発環境）'
+            // フォールバック用モックデータ
+            fallbackData: {
+                name: `フォールバック製品 (JAN: ${req.query.jan_code})`,
+                manufacturer: 'フォールバックメーカー',
+                model: `MODEL-${req.query.jan_code?.slice(-4) || '0000'}`,
+                keys: [
+                    '転送速度: USB 3.0',
+                    'ポート数: 4',
+                    '重量（g）: 150',
+                    '材質: プラスチック',
+                    'データ転送方法: USB',
+                    'サイズ（外形寸法高さ、幅、長さ）: 10x5x2cm',
+                    '表示内容: LED インジケーター'
+                ]
+            }
         });
     }
 } 
