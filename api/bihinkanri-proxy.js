@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     // CORS対応ヘッダーを設定
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Account-ID');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-KEY, ACCOUNT_ID');
     
     // OPTIONSリクエスト（プリフライト）の処理
     if (req.method === 'OPTIONS') {
@@ -47,8 +47,8 @@ export default async function handler(req, res) {
         const apiResponse = await fetch(`https://api.bihinkanri.cloud/public-prod/spec-forms?jan_code=${encodeURIComponent(jan_code)}`, {
             method: 'GET',
             headers: {
-                'Authorization': 'ApiKey_e1dd7831-baea-447f-a047-435dbcd3f26d',
-                'X-Account-ID': '3541',
+                'X-API-KEY': 'ApiKey_e1dd7831-baea-447f-a047-435dbcd3f26d',
+                'ACCOUNT_ID': '3541',
                 'Content-Type': 'application/json'
             },
             signal: controller.signal
