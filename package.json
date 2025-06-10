@@ -1,0 +1,21 @@
+{
+  "name": "kintone-bihinkanri-proxy",
+  "version": "1.0.0",
+  "description": "kintone備品管理システム用プロキシサーバー",
+  "main": "api/bihinkanri-proxy.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  },
+  "keywords": [
+    "kintone",
+    "proxy",
+    "jan-code",
+    "bihinkanri"
+  ],
+  "author": "Satoko",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
