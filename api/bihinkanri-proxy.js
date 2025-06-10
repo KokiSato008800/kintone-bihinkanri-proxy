@@ -62,13 +62,25 @@ export default async function handler(req, res) {
         
         const data = await apiResponse.json();
         
-        console.log(`✅ API応答成功: JAN=${jan_code}`);
+        console.log(`✅ API応答成功: JAN=${jan_code}`, {
+            responseStatus: apiResponse.status,
+            dataKeys: Object.keys(data),
+            keysLength: data.keys ? data.keys.length : 'keys property not found',
+            fullResponse: data
+        });
         
-        // 成功レスポンス
+        // 成功レスポンス（デバッグ情報付き）
         res.status(200).json({
             success: true,
             janCode: jan_code,
             data: data,
+            debug: {
+                apiStatus: apiResponse.status,
+                dataStructure: Object.keys(data),
+                keysCount: data.keys ? data.keys.length : 0,
+                hasKeys: Boolean(data.keys),
+                dataType: typeof data
+            },
             timestamp: new Date().toISOString()
         });
         
