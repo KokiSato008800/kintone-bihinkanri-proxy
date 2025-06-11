@@ -62,40 +62,55 @@ export default async function handler(req, res) {
         
         const data = await apiResponse.json();
         
-        console.log(`✅ API応答成功: JAN=${jan_code}`, {
-            responseStatus: apiResponse.status,
-            dataKeys: Object.keys(data),
-            keysLength: data.keys ? data.keys.length : 'keys property not found',
-            fullResponse: data
-        });
-        
-        // 実際のデータ構造を詳細にログ出力
-        console.log('🔍 詳細なAPIレスポンス分析:', {
+        console.log(`✅ API応答成功: JAN=${jan_code}`);
+        console.log('📊 完全なAPIレスポンス:', JSON.stringify(data, null, 2));
+        console.log('🔍 レスポンス構造分析:', {
+            responseType: typeof data,
+            topLevelKeys: Object.keys(data),
             hasKeys: Boolean(data.keys),
-            keysArray: data.keys,
-            otherProperties: Object.keys(data).filter(key => key !== 'keys'),
-            fullDataStructure: JSON.stringify(data, null, 2)
+            keysLength: data.keys ? data.keys.length : 0,
+            keysType: data.keys ? typeof data.keys : 'undefined',
+            keysIsArray: Array.isArray(data.keys),
+            firstFewKeys: data.keys ? data.keys.slice(0, 5) : [],
         });
         
-        // データが空の場合は仮データを使用
-        const hasRealData = data.keys && data.keys.length > 0;
-        const responseData = hasRealData ? data : {
-            name: `サンプル製品 (JAN: ${jan_code})`,
-            manufacturer: "サンプルメーカー",
-            model: `MODEL-${jan_code.slice(-4)}`,
-            keys: [
-                "転送速度: USB 3.0",
-                "ポート数: 4ポート",
-                "重量（g）: 150",
-                "材質: プラスチック",
-                "データ転送方法: USB",
-                "サイズ（外形寸法高さ、幅、長さ）: 10cm x 5cm x 2cm",
-                "表示内容: LED インジケーター",
-                "対応OS: Windows, Mac, Linux",
-                "電源: USBバスパワー",
-                "保証期間: 1年間"
-            ]
-        };
+        // 他の可能なフィールドもチェック
+        const possibleFields = [
+            'name', 'product_name', 'productName', 'title',
+            'manufacturer', 'maker', 'company', 'brand',
+            'model', 'model_name', 'modelName', 'model_number',
+            'specs', 'specifications', 'spec_data', 'attributes',
+            'category', 'description', 'details'
+        ];
+        
+        const foundFields = {};
+        possibleFields.forEach(field => {
+            if (data[field] !== undefined) {
+                foundFields[field] = data[field];
+            }
+        });
+        
+        console.log('🔍 検出されたフィールド:', foundFields);
+        
+        // データの有無を正確に判定
+        const hasRealData = (data.keys && data.keys.length > 0) || Object.keys(foundFields).length > 0;
+        
+        if (!hasRealData) {
+            // データがない場合はエラーレスポンス
+            console.log('❌ 製品データが見つかりません');
+            return res.status(404).json({
+                success: false,
+                error: '製品情報が見つかりませんでした',
+                errorType: 'ProductNotFound',
+                message: `JAN コード ${jan_code} に対応する製品情報がデータベースに存在しません`,
+                janCode: jan_code,
+                suggestion: '手動で製品情報を入力してください',
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 実際のデータをそのまま返す（仮データは使用しない）
+        const responseData = data;
         
         // 成功レスポンス（仮データ対応）
         res.status(200).json({
