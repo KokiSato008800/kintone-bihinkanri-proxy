@@ -69,6 +69,14 @@ export default async function handler(req, res) {
             fullResponse: data
         });
         
+        // 実際のデータ構造を詳細にログ出力
+        console.log('🔍 詳細なAPIレスポンス分析:', {
+            hasKeys: Boolean(data.keys),
+            keysArray: data.keys,
+            otherProperties: Object.keys(data).filter(key => key !== 'keys'),
+            fullDataStructure: JSON.stringify(data, null, 2)
+        });
+        
         // データが空の場合は仮データを使用
         const hasRealData = data.keys && data.keys.length > 0;
         const responseData = hasRealData ? data : {
