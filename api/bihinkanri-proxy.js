@@ -96,23 +96,36 @@ export default async function handler(req, res) {
         const hasRealData = (data.keys && data.keys.length > 0) || Object.keys(foundFields).length > 0;
         
         if (!hasRealData) {
-            // データがない場合はエラーレスポンス
-            console.log('❌ 製品データが見つかりません');
-            return res.status(404).json({
-                success: false,
-                error: '製品情報が見つかりませんでした',
-                errorType: 'ProductNotFound',
-                message: `JAN コード ${jan_code} に対応する製品情報がデータベースに存在しません`,
+            // データがない場合は仮データを返す（仕様書準拠）
+            console.log('❌ 製品データが見つかりません - 仮データを返します');
+            
+            const mockProductData = {
+                name: generateMockProductName(jan_code),
+                manufacturer_name: generateMockManufacturer(jan_code),
+                model_name: generateMockModel(jan_code),
+                specs: generateMockSpecs(jan_code)
+            };
+            
+            return res.status(200).json({
+                success: true,
                 janCode: jan_code,
-                suggestion: '手動で製品情報を入力してください',
+                data: mockProductData,
+                dataSource: 'mock',
+                debug: {
+                    apiStatus: apiResponse?.status || 'no_response',
+                    dataStructure: Object.keys(mockProductData),
+                    hasRealData: false,
+                    usedMockData: true,
+                    note: 'Mock data generated according to API specification'
+                },
                 timestamp: new Date().toISOString()
             });
         }
         
-        // 実際のデータをそのまま返す（仮データは使用しない）
+        // 実際のデータをそのまま返す
         const responseData = data;
         
-        // 成功レスポンス（仮データ対応）
+        // 成功レスポンス
         res.status(200).json({
             success: true,
             janCode: jan_code,
@@ -138,29 +151,105 @@ export default async function handler(req, res) {
             console.log('🌐 ネットワークエラー: 外部APIへの接続に失敗しました');
         }
         
-        // 実際のAPIエラーを返す（デバッグ用）
-        res.status(500).json({
-            success: false,
-            error: 'API呼び出しエラー',
-            errorType: error.name,
-            message: error.message,
+        // エラー時は仮データを返す（仕様書準拠）
+        console.log('🔄 エラー時のフォールバック: 仮データを返します');
+        
+        const mockProductData = {
+            name: generateMockProductName(req.query.jan_code),
+            manufacturer_name: generateMockManufacturer(req.query.jan_code),
+            model_name: generateMockModel(req.query.jan_code),
+            specs: generateMockSpecs(req.query.jan_code)
+        };
+        
+        res.status(200).json({
+            success: true,
             janCode: req.query.jan_code,
-            timestamp: new Date().toISOString(),
-            // フォールバック用モックデータ
-            fallbackData: {
-                name: `フォールバック製品 (JAN: ${req.query.jan_code})`,
-                manufacturer: 'フォールバックメーカー',
-                model: `MODEL-${req.query.jan_code?.slice(-4) || '0000'}`,
-                keys: [
-                    '転送速度: USB 3.0',
-                    'ポート数: 4',
-                    '重量（g）: 150',
-                    '材質: プラスチック',
-                    'データ転送方法: USB',
-                    'サイズ（外形寸法高さ、幅、長さ）: 10x5x2cm',
-                    '表示内容: LED インジケーター'
-                ]
-            }
+            data: mockProductData,
+            dataSource: 'mock_fallback',
+            debug: {
+                originalError: error.message,
+                errorType: error.name,
+                hasRealData: false,
+                usedMockData: true,
+                note: 'Mock data generated due to API error'
+            },
+            timestamp: new Date().toISOString()
         });
+    }
+}
+
+// 仮データ生成関数群
+function generateMockProductName(janCode) {
+    const productTypes = [
+        'モニター', 'キーボード', 'マウス', 'スピーカー', 'ヘッドフォン',
+        'ウェブカメラ', 'USBハブ', '外付けHDD', 'SDカード', 'LANケーブル'
+    ];
+    
+    const brands = ['PRO', 'ULTRA', 'MAX', 'LITE', 'MINI'];
+    const numbers = janCode.slice(-4);
+    
+    const productType = productTypes[parseInt(janCode[0]) % productTypes.length];
+    const brand = brands[parseInt(janCode[1]) % brands.length];
+    
+    return `${productType} ${brand}-${numbers}`;
+}
+
+function generateMockManufacturer(janCode) {
+    const manufacturers = [
+        'LGエレクトロニクス', 'サムスン', 'ASUS', 'ロジクール', 'エレコム',
+        'バッファロー', 'アイ・オー・データ', 'ソニー', 'パナソニック', 'フィリップス'
+    ];
+    
+    return manufacturers[parseInt(janCode[2]) % manufacturers.length];
+}
+
+function generateMockModel(janCode) {
+    const series = ['WL', 'UL', 'GL', 'BL', 'ML'];
+    const numbers = janCode.slice(-6, -2);
+    const suffix = ['B', 'W', 'S', 'G', 'R'];
+    
+    const seriesName = series[parseInt(janCode[3]) % series.length];
+    const suffixChar = suffix[parseInt(janCode[4]) % suffix.length];
+    
+    return `${numbers}${seriesName}-${suffixChar}`;
+}
+
+function generateMockSpecs(janCode) {
+    // JANコードに基づいて一貫した仕様を生成
+    const lastDigit = parseInt(janCode.slice(-1));
+    const secondLastDigit = parseInt(janCode.slice(-2, -1));
+    
+    // モニター系の仕様例
+    if (lastDigit % 3 === 0) {
+        return {
+            "画面サイズ": `${20 + (lastDigit % 15)}インチ`,
+            "解像度": lastDigit > 5 ? "2560×1080" : "1920×1080",
+            "リフレッシュレート": `${60 + (secondLastDigit * 15)}Hz`,
+            "接続端子": "HDMI, DisplayPort, USB-C",
+            "消費電力": `${30 + (lastDigit * 5)}W`,
+            "重量": `${3 + (lastDigit * 0.5)}kg`
+        };
+    }
+    // 周辺機器系の仕様例
+    else if (lastDigit % 3 === 1) {
+        return {
+            "接続方式": lastDigit > 5 ? "無線2.4GHz" : "有線USB",
+            "DPI": `${800 + (secondLastDigit * 400)}`,
+            "ボタン数": `${3 + (lastDigit % 5)}`,
+            "バッテリー": lastDigit > 5 ? "単3電池×2" : "内蔵リチウム",
+            "重量": `${80 + (lastDigit * 10)}g`,
+            "保証期間": "1年"
+        };
+    }
+    // ストレージ系の仕様例
+    else {
+        return {
+            "容量": `${Math.pow(2, 8 + (lastDigit % 4))}GB`,
+            "インターフェース": "USB 3.0",
+            "転送速度": `最大${100 + (secondLastDigit * 50)}MB/s`,
+            "フォーマット": "FAT32",
+            "対応OS": "Windows, macOS, Linux",
+            "耐久性": "防水・防塵 IP67"
+        };
     }
 } 
