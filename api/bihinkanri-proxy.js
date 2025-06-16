@@ -196,7 +196,6 @@ export default async function handler(req, res) {
                 data: transformedData,
                 dataSource: 'api_real_data',
                 debug: {
-                    note: 'Real product data found and transformed',
                     originalDataType: typeof data,
                     isArray: Array.isArray(data),
                     arrayLength: Array.isArray(data) ? data.length : 'not_array',
@@ -245,8 +244,7 @@ export default async function handler(req, res) {
                 originalError: error.message,
                 errorType: error.name,
                 hasRealData: false,
-                usedMockData: true,
-                note: 'Mock data generated due to API error'
+                usedMockData: true
             },
             timestamp: new Date().toISOString()
         });
