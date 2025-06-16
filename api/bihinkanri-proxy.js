@@ -60,17 +60,22 @@ export default async function handler(req, res) {
             throw new Error(`API Error: ${apiResponse.status} ${apiResponse.statusText}`);
         }
         
-        const data = await apiResponse.json();
-        
-        console.log(`✅ API応答成功: JAN=${jan_code}`);
-        console.log('📊 ===== 加工前の生データ =====');
-        console.log('Raw API Response:', JSON.stringify(data, null, 2));
-        console.log('Data type:', typeof data);
-        console.log('Top level keys:', Object.keys(data));
-        console.log('data.keys exists:', !!data.keys);
-        console.log('data.keys type:', typeof data.keys);
-        console.log('data.keys value:', data.keys);
-        console.log('===== 生データ確認終了 =====');
+        let data;
+        try {
+            data = await apiResponse.json();
+            console.log(`✅ API応答成功: JAN=${jan_code}`);
+            console.log('📊 ===== 加工前の生データ =====');
+            console.log('Raw API Response:', JSON.stringify(data, null, 2));
+            console.log('Data type:', typeof data);
+            console.log('Top level keys:', data ? Object.keys(data) : 'null');
+            console.log('data.keys exists:', !!data.keys);
+            console.log('data.keys type:', typeof data.keys);
+            console.log('data.keys value:', data.keys);
+            console.log('===== 生データ確認終了 =====');
+        } catch (jsonError) {
+            console.error('❌ JSON解析エラー:', jsonError.message);
+            throw new Error(`JSON parsing failed: ${jsonError.message}`);
+        }
         
         // より包括的なデータ検出ロジック
         const foundFields = {};
@@ -82,35 +87,53 @@ export default async function handler(req, res) {
             'category', 'description', 'details', 'keys'
         ];
         
-        possibleFields.forEach(field => {
-            if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
-                foundFields[field] = data[field];
-            }
-        });
-        
-        console.log('🔍 検出されたフィールド:', foundFields);
+        try {
+            possibleFields.forEach(field => {
+                if (data && data[field] !== undefined && data[field] !== null && data[field] !== '') {
+                    foundFields[field] = data[field];
+                }
+            });
+            console.log('🔍 検出されたフィールド:', foundFields);
+        } catch (fieldError) {
+            console.error('❌ フィールド検出エラー:', fieldError.message);
+            console.log('🔍 検出されたフィールド: エラーのため空');
+        }
         
         // 実際のAPIデータ構造を直接確認
-        const hasProductInfo = Boolean(
-            (data.keys && Array.isArray(data.keys) && data.keys.length > 0) ||
-            data.name || data.product_name || data.productName ||
-            data.manufacturer || data.maker || data.brand ||
-            data.model || data.model_name ||
-            Object.keys(data).length > 2 // 基本的にデータが存在する場合
-        );
-        
-        console.log('📊 データ存在判定:', {
-            hasKeys: Boolean(data.keys && data.keys.length > 0),
-            hasProductName: Boolean(data.name || data.product_name || data.productName),
-            hasManufacturer: Boolean(data.manufacturer || data.maker || data.brand),
-            hasModel: Boolean(data.model || data.model_name),
-            dataKeysCount: Object.keys(data).length,
-            hasProductInfo
-        });
+        let hasProductInfo = false;
+        try {
+            hasProductInfo = Boolean(
+                data && (
+                    (data.keys && Array.isArray(data.keys) && data.keys.length > 0) ||
+                    data.name || data.product_name || data.productName ||
+                    data.manufacturer || data.maker || data.brand ||
+                    data.model || data.model_name ||
+                    Object.keys(data).length > 2 // 基本的にデータが存在する場合
+                )
+            );
+            
+            console.log('📊 データ存在判定:', {
+                hasKeys: Boolean(data && data.keys && data.keys.length > 0),
+                hasProductName: Boolean(data && (data.name || data.product_name || data.productName)),
+                hasManufacturer: Boolean(data && (data.manufacturer || data.maker || data.brand)),
+                hasModel: Boolean(data && (data.model || data.model_name)),
+                dataKeysCount: data ? Object.keys(data).length : 0,
+                hasProductInfo
+            });
+        } catch (judgeError) {
+            console.error('❌ データ存在判定エラー:', judgeError.message);
+            hasProductInfo = false;
+        }
         
         // 実際のデータを正しい形式に変換
-        const productData = transformApiData(data);
-        console.log('🔄 データ変換結果:', productData);
+        let productData = null;
+        try {
+            productData = transformApiData(data);
+            console.log('🔄 データ変換結果:', productData);
+        } catch (transformError) {
+            console.error('❌ データ変換エラー:', transformError.message);
+            productData = null;
+        }
         
         const hasRealData = hasProductInfo;
         
@@ -142,21 +165,26 @@ export default async function handler(req, res) {
         }
         
         // 🔍 DEBUG: 一時的に生データをそのまま返す
-        res.status(200).json({
-            success: true,
-            janCode: jan_code,
-            data: data, // 加工せずに生データを返す
-            dataSource: 'api_raw_debug',
-            debug: {
-                note: 'This is raw API response for debugging',
-                dataType: typeof data,
-                topLevelKeys: Object.keys(data),
-                apiStatus: apiResponse.status,
-                hasRealData: true,
-                usedMockData: false
-            },
-            timestamp: new Date().toISOString()
-        });
+        try {
+            res.status(200).json({
+                success: true,
+                janCode: jan_code,
+                data: data || {}, // 加工せずに生データを返す（nullの場合は空オブジェクト）
+                dataSource: 'api_raw_debug',
+                debug: {
+                    note: 'This is raw API response for debugging',
+                    dataType: typeof data,
+                    topLevelKeys: data ? Object.keys(data) : [],
+                    apiStatus: apiResponse.status,
+                    hasRealData: true,
+                    usedMockData: false
+                },
+                timestamp: new Date().toISOString()
+            });
+        } catch (responseError) {
+            console.error('❌ レスポンス生成エラー:', responseError.message);
+            throw responseError;
+        }
         
     } catch (error) {
         console.error('❌ プロキシエラー:', error.name, error.message);
