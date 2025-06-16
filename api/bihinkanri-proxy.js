@@ -74,26 +74,47 @@ export default async function handler(req, res) {
             firstFewKeys: data.keys ? data.keys.slice(0, 5) : [],
         });
         
-        // 他の可能なフィールドもチェック
+        // より包括的なデータ検出ロジック
+        const foundFields = {};
         const possibleFields = [
             'name', 'product_name', 'productName', 'title',
             'manufacturer', 'maker', 'company', 'brand',
             'model', 'model_name', 'modelName', 'model_number',
             'specs', 'specifications', 'spec_data', 'attributes',
-            'category', 'description', 'details'
+            'category', 'description', 'details', 'keys'
         ];
         
-        const foundFields = {};
         possibleFields.forEach(field => {
-            if (data[field] !== undefined) {
+            if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
                 foundFields[field] = data[field];
             }
         });
         
         console.log('🔍 検出されたフィールド:', foundFields);
         
-        // データの有無を正確に判定
-        const hasRealData = (data.keys && data.keys.length > 0) || Object.keys(foundFields).length > 0;
+        // 実際のAPIデータ構造を直接確認
+        const hasProductInfo = Boolean(
+            (data.keys && Array.isArray(data.keys) && data.keys.length > 0) ||
+            data.name || data.product_name || data.productName ||
+            data.manufacturer || data.maker || data.brand ||
+            data.model || data.model_name ||
+            Object.keys(data).length > 2 // 基本的にデータが存在する場合
+        );
+        
+        console.log('📊 データ存在判定:', {
+            hasKeys: Boolean(data.keys && data.keys.length > 0),
+            hasProductName: Boolean(data.name || data.product_name || data.productName),
+            hasManufacturer: Boolean(data.manufacturer || data.maker || data.brand),
+            hasModel: Boolean(data.model || data.model_name),
+            dataKeysCount: Object.keys(data).length,
+            hasProductInfo
+        });
+        
+        // 実際のデータを正しい形式に変換
+        const productData = transformApiData(data);
+        console.log('🔄 データ変換結果:', productData);
+        
+        const hasRealData = hasProductInfo;
         
         if (!hasRealData) {
             // データがない場合は仮データを返す（仕様書準拠）
@@ -122,21 +143,19 @@ export default async function handler(req, res) {
             });
         }
         
-        // 実際のデータをそのまま返す
-        const responseData = data;
-        
-        // 成功レスポンス
+        // 実際のデータを変換して返す
         res.status(200).json({
             success: true,
             janCode: jan_code,
-            data: responseData,
-            dataSource: hasRealData ? 'api' : 'mock',
+            data: productData,
+            dataSource: 'api',
             debug: {
+                originalApiResponse: data,
                 apiStatus: apiResponse.status,
-                dataStructure: Object.keys(data),
-                keysCount: data.keys ? data.keys.length : 0,
-                hasRealData: hasRealData,
-                usedMockData: !hasRealData
+                dataStructure: Object.keys(productData),
+                hasRealData: true,
+                usedMockData: false,
+                transformedFields: Object.keys(productData).filter(key => productData[key])
             },
             timestamp: new Date().toISOString()
         });
@@ -176,6 +195,76 @@ export default async function handler(req, res) {
             timestamp: new Date().toISOString()
         });
     }
+}
+
+// 実際のAPIデータを統一形式に変換
+function transformApiData(apiData) {
+    console.log('🔄 APIデータ変換開始:', apiData);
+    
+    const transformed = {
+        name: extractValue(apiData, ['name', 'product_name', 'productName', 'title']),
+        manufacturer_name: extractValue(apiData, ['manufacturer', 'maker', 'company', 'brand']),
+        model_name: extractValue(apiData, ['model', 'model_name', 'modelName', 'model_number']),
+        specs: extractSpecs(apiData)
+    };
+    
+    console.log('✅ APIデータ変換完了:', transformed);
+    return transformed;
+}
+
+// フィールド値抽出ヘルパー
+function extractValue(data, candidates) {
+    for (const candidate of candidates) {
+        const value = data[candidate];
+        if (value && typeof value === 'string' && value.trim()) {
+            return value.trim();
+        }
+    }
+    return null;
+}
+
+// スペック情報抽出・変換
+function extractSpecs(data) {
+    // 1. specsオブジェクトがある場合
+    if (data.specs && typeof data.specs === 'object') {
+        return data.specs;
+    }
+    
+    // 2. keysが配列の場合、オブジェクトに変換
+    if (data.keys && Array.isArray(data.keys)) {
+        const specs = {};
+        data.keys.forEach((key, index) => {
+            if (typeof key === 'string' && key.trim()) {
+                specs[`項目${index + 1}`] = key.trim();
+            }
+        });
+        return Object.keys(specs).length > 0 ? specs : null;
+    }
+    
+    // 3. その他のフィールドからスペック情報を構築
+    const specFields = ['specifications', 'spec_data', 'attributes', 'details'];
+    for (const field of specFields) {
+        if (data[field]) {
+            if (typeof data[field] === 'object') {
+                return data[field];
+            } else if (typeof data[field] === 'string') {
+                return { '詳細': data[field] };
+            }
+        }
+    }
+    
+    // 4. 全体のデータからスペック系フィールドを抽出
+    const specs = {};
+    Object.keys(data).forEach(key => {
+        const value = data[key];
+        // 基本情報以外をスペックとして扱う
+        if (!['name', 'manufacturer', 'model', 'keys'].includes(key) && 
+            value && typeof value === 'string' && value.trim()) {
+            specs[key] = value.trim();
+        }
+    });
+    
+    return Object.keys(specs).length > 0 ? specs : null;
 }
 
 // 仮データ生成関数群
