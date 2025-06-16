@@ -135,52 +135,63 @@ export default async function handler(req, res) {
             productData = null;
         }
         
-        const hasRealData = hasProductInfo;
+        // 🔍 DEBUG: データ存在判定を一時的にスキップして必ず生データを返す
+        console.log('🚨 DEBUG MODE: データ存在判定をスキップして生データを強制返却');
         
-        if (!hasRealData) {
-            // データがない場合は仮データを返す（仕様書準拠）
-            console.log('❌ 製品データが見つかりません - 仮データを返します');
-            
-            const mockProductData = {
-                name: generateMockProductName(jan_code),
-                manufacturer_name: generateMockManufacturer(jan_code),
-                model_name: generateMockModel(jan_code),
-                specs: generateMockSpecs(jan_code)
-            };
-            
-            return res.status(200).json({
-                success: true,
-                janCode: jan_code,
-                data: mockProductData,
-                dataSource: 'mock',
-                debug: {
-                    apiStatus: apiResponse?.status || 'no_response',
-                    dataStructure: Object.keys(mockProductData),
-                    hasRealData: false,
-                    usedMockData: true,
-                    note: 'Mock data generated according to API specification'
-                },
-                timestamp: new Date().toISOString()
-            });
-        }
+        // const hasRealData = hasProductInfo;
+        // 
+        // if (!hasRealData) {
+        //     // データがない場合は仮データを返す（仕様書準拠）
+        //     console.log('❌ 製品データが見つかりません - 仮データを返します');
+        //     
+        //     const mockProductData = {
+        //         name: generateMockProductName(jan_code),
+        //         manufacturer_name: generateMockManufacturer(jan_code),
+        //         model_name: generateMockModel(jan_code),
+        //         specs: generateMockSpecs(jan_code)
+        //     };
+        //     
+        //     return res.status(200).json({
+        //         success: true,
+        //         janCode: jan_code,
+        //         data: mockProductData,
+        //         dataSource: 'mock',
+        //         debug: {
+        //             apiStatus: apiResponse?.status || 'no_response',
+        //             dataStructure: Object.keys(mockProductData),
+        //             hasRealData: false,
+        //             usedMockData: true,
+        //             note: 'Mock data generated according to API specification'
+        //         },
+        //         timestamp: new Date().toISOString()
+        //     });
+        // }
         
         // 🔍 DEBUG: 一時的に生データをそのまま返す
+        console.log('🚨 生データを返却します');
+        console.log('📊 返却するデータ:', JSON.stringify(data, null, 2));
+        
         try {
-            res.status(200).json({
+            const response = {
                 success: true,
                 janCode: jan_code,
                 data: data || {}, // 加工せずに生データを返す（nullの場合は空オブジェクト）
                 dataSource: 'api_raw_debug',
                 debug: {
-                    note: 'This is raw API response for debugging',
+                    note: 'This is raw API response for debugging - forced return',
                     dataType: typeof data,
                     topLevelKeys: data ? Object.keys(data) : [],
                     apiStatus: apiResponse.status,
                     hasRealData: true,
-                    usedMockData: false
+                    usedMockData: false,
+                    foundFields: foundFields,
+                    hasProductInfo: hasProductInfo
                 },
                 timestamp: new Date().toISOString()
-            });
+            };
+            
+            console.log('📤 最終レスポンス:', JSON.stringify(response, null, 2));
+            res.status(200).json(response);
         } catch (responseError) {
             console.error('❌ レスポンス生成エラー:', responseError.message);
             throw responseError;
