@@ -63,16 +63,14 @@ export default async function handler(req, res) {
         const data = await apiResponse.json();
         
         console.log(`✅ API応答成功: JAN=${jan_code}`);
-        console.log('📊 完全なAPIレスポンス:', JSON.stringify(data, null, 2));
-        console.log('🔍 レスポンス構造分析:', {
-            responseType: typeof data,
-            topLevelKeys: Object.keys(data),
-            hasKeys: Boolean(data.keys),
-            keysLength: data.keys ? data.keys.length : 0,
-            keysType: data.keys ? typeof data.keys : 'undefined',
-            keysIsArray: Array.isArray(data.keys),
-            firstFewKeys: data.keys ? data.keys.slice(0, 5) : [],
-        });
+        console.log('📊 ===== 加工前の生データ =====');
+        console.log('Raw API Response:', JSON.stringify(data, null, 2));
+        console.log('Data type:', typeof data);
+        console.log('Top level keys:', Object.keys(data));
+        console.log('data.keys exists:', !!data.keys);
+        console.log('data.keys type:', typeof data.keys);
+        console.log('data.keys value:', data.keys);
+        console.log('===== 生データ確認終了 =====');
         
         // より包括的なデータ検出ロジック
         const foundFields = {};
@@ -143,19 +141,19 @@ export default async function handler(req, res) {
             });
         }
         
-        // 実際のデータを変換して返す
+        // 🔍 DEBUG: 一時的に生データをそのまま返す
         res.status(200).json({
             success: true,
             janCode: jan_code,
-            data: productData,
-            dataSource: 'api',
+            data: data, // 加工せずに生データを返す
+            dataSource: 'api_raw_debug',
             debug: {
-                originalApiResponse: data,
+                note: 'This is raw API response for debugging',
+                dataType: typeof data,
+                topLevelKeys: Object.keys(data),
                 apiStatus: apiResponse.status,
-                dataStructure: Object.keys(productData),
                 hasRealData: true,
-                usedMockData: false,
-                transformedFields: Object.keys(productData).filter(key => productData[key])
+                usedMockData: false
             },
             timestamp: new Date().toISOString()
         });
