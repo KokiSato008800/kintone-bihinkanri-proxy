@@ -77,47 +77,60 @@ export default async function handler(req, res) {
             throw new Error(`JSON parsing failed: ${jsonError.message}`);
         }
         
-        // より包括的なデータ検出ロジック
+        // より包括的なデータ検出ロジック（配列対応）
         const foundFields = {};
         const possibleFields = [
             'name', 'product_name', 'productName', 'title',
-            'manufacturer', 'maker', 'company', 'brand',
+            'manufacturer', 'maker', 'company', 'brand', 'manufacturer_name',
             'model', 'model_name', 'modelName', 'model_number',
             'specs', 'specifications', 'spec_data', 'attributes',
             'category', 'description', 'details', 'keys'
         ];
         
         try {
+            // データが配列の場合は最初の要素をチェック
+            const targetData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            
             possibleFields.forEach(field => {
-                if (data && data[field] !== undefined && data[field] !== null && data[field] !== '') {
-                    foundFields[field] = data[field];
+                if (targetData && targetData[field] !== undefined && targetData[field] !== null && targetData[field] !== '') {
+                    foundFields[field] = targetData[field];
                 }
             });
             console.log('🔍 検出されたフィールド:', foundFields);
+            console.log('📊 データ形式:', Array.isArray(data) ? '配列' : 'オブジェクト');
+            if (Array.isArray(data)) {
+                console.log('📊 配列長:', data.length);
+                console.log('📊 最初の要素:', JSON.stringify(data[0], null, 2));
+            }
         } catch (fieldError) {
             console.error('❌ フィールド検出エラー:', fieldError.message);
             console.log('🔍 検出されたフィールド: エラーのため空');
         }
         
-        // 実際のAPIデータ構造を直接確認
+        // 実際のAPIデータ構造を直接確認（配列対応）
         let hasProductInfo = false;
         try {
+            // データが配列の場合は最初の要素をチェック
+            const targetData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            
             hasProductInfo = Boolean(
-                data && (
-                    (data.keys && Array.isArray(data.keys) && data.keys.length > 0) ||
-                    data.name || data.product_name || data.productName ||
-                    data.manufacturer || data.maker || data.brand ||
-                    data.model || data.model_name ||
-                    Object.keys(data).length > 2 // 基本的にデータが存在する場合
+                targetData && (
+                    (targetData.keys && Array.isArray(targetData.keys) && targetData.keys.length > 0) ||
+                    targetData.name || targetData.product_name || targetData.productName ||
+                    targetData.manufacturer || targetData.maker || targetData.brand || targetData.manufacturer_name ||
+                    targetData.model || targetData.model_name ||
+                    Object.keys(targetData).length > 2 // 基本的にデータが存在する場合
                 )
             );
             
             console.log('📊 データ存在判定:', {
-                hasKeys: Boolean(data && data.keys && data.keys.length > 0),
-                hasProductName: Boolean(data && (data.name || data.product_name || data.productName)),
-                hasManufacturer: Boolean(data && (data.manufacturer || data.maker || data.brand)),
-                hasModel: Boolean(data && (data.model || data.model_name)),
-                dataKeysCount: data ? Object.keys(data).length : 0,
+                isArray: Array.isArray(data),
+                arrayLength: Array.isArray(data) ? data.length : 'not_array',
+                hasKeys: Boolean(targetData && targetData.keys && targetData.keys.length > 0),
+                hasProductName: Boolean(targetData && (targetData.name || targetData.product_name || targetData.productName)),
+                hasManufacturer: Boolean(targetData && (targetData.manufacturer || targetData.maker || targetData.brand || targetData.manufacturer_name)),
+                hasModel: Boolean(targetData && (targetData.model || targetData.model_name)),
+                dataKeysCount: targetData ? Object.keys(targetData).length : 0,
                 hasProductInfo
             });
         } catch (judgeError) {
@@ -125,10 +138,12 @@ export default async function handler(req, res) {
             hasProductInfo = false;
         }
         
-        // 実際のデータを正しい形式に変換
+        // 実際のデータを正しい形式に変換（配列対応）
         let productData = null;
         try {
-            productData = transformApiData(data);
+            // データが配列の場合は最初の要素を使用
+            const targetData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            productData = transformApiData(targetData);
             console.log('🔄 データ変換結果:', productData);
         } catch (transformError) {
             console.error('❌ データ変換エラー:', transformError.message);
@@ -167,22 +182,28 @@ export default async function handler(req, res) {
         //     });
         // }
         
-        // 🔍 DEBUG: 一時的に生データをそのまま返す
-        console.log('🚨 生データを返却します');
+        // 🔍 DEBUG: 配列対応の生データ返却
+        console.log('🚨 配列対応の生データを返却します');
         console.log('📊 返却するデータ:', JSON.stringify(data, null, 2));
         
         try {
+            // データが配列の場合は最初の要素を使用、そうでなければそのまま
+            const processedData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            
             const response = {
                 success: true,
                 janCode: jan_code,
-                data: data || {}, // 加工せずに生データを返す（nullの場合は空オブジェクト）
-                dataSource: 'api_raw_debug',
+                data: processedData || {}, // 配列の場合は最初の要素を返す
+                dataSource: 'api_processed_debug',
                 debug: {
-                    note: 'This is raw API response for debugging - forced return',
-                    dataType: typeof data,
-                    topLevelKeys: data ? Object.keys(data) : [],
+                    note: 'API response processed for array format',
+                    originalDataType: typeof data,
+                    isArray: Array.isArray(data),
+                    arrayLength: Array.isArray(data) ? data.length : 'not_array',
+                    processedDataType: typeof processedData,
+                    topLevelKeys: processedData ? Object.keys(processedData) : [],
                     apiStatus: apiResponse.status,
-                    hasRealData: true,
+                    hasRealData: hasProductInfo,
                     usedMockData: false,
                     foundFields: foundFields,
                     hasProductInfo: hasProductInfo
