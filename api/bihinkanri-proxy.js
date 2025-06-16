@@ -81,8 +81,8 @@ export default async function handler(req, res) {
         const foundFields = {};
         const possibleFields = [
             'name', 'product_name', 'productName', 'title',
-            'manufacturer', 'maker', 'company', 'brand', 'manufacturer_name',
-            'model', 'model_name', 'modelName', 'model_number',
+            'manufacturer_name', 'manufacturer', 'maker', 'company', 'brand',
+            'model_name', 'model', 'modelName', 'model_number',
             'specs', 'specifications', 'spec_data', 'attributes',
             'category', 'description', 'details', 'keys'
         ];
@@ -117,8 +117,8 @@ export default async function handler(req, res) {
                 targetData && (
                     (targetData.keys && Array.isArray(targetData.keys) && targetData.keys.length > 0) ||
                     targetData.name || targetData.product_name || targetData.productName ||
-                    targetData.manufacturer || targetData.maker || targetData.brand || targetData.manufacturer_name ||
-                    targetData.model || targetData.model_name ||
+                    targetData.manufacturer_name || targetData.manufacturer || targetData.maker || targetData.brand ||
+                    targetData.model_name || targetData.model ||
                     Object.keys(targetData).length > 2 // 基本的にデータが存在する場合
                 )
             );
@@ -128,8 +128,8 @@ export default async function handler(req, res) {
                 arrayLength: Array.isArray(data) ? data.length : 'not_array',
                 hasKeys: Boolean(targetData && targetData.keys && targetData.keys.length > 0),
                 hasProductName: Boolean(targetData && (targetData.name || targetData.product_name || targetData.productName)),
-                hasManufacturer: Boolean(targetData && (targetData.manufacturer || targetData.maker || targetData.brand || targetData.manufacturer_name)),
-                hasModel: Boolean(targetData && (targetData.model || targetData.model_name)),
+                hasManufacturer: Boolean(targetData && (targetData.manufacturer_name || targetData.manufacturer || targetData.maker || targetData.brand)),
+                hasModel: Boolean(targetData && (targetData.model_name || targetData.model)),
                 dataKeysCount: targetData ? Object.keys(targetData).length : 0,
                 hasProductInfo
             });
@@ -259,8 +259,8 @@ function transformApiData(apiData) {
     
     const transformed = {
         name: extractValue(apiData, ['name', 'product_name', 'productName', 'title']),
-        manufacturer_name: extractValue(apiData, ['manufacturer', 'maker', 'company', 'brand']),
-        model_name: extractValue(apiData, ['model', 'model_name', 'modelName', 'model_number']),
+        manufacturer_name: extractValue(apiData, ['manufacturer_name', 'manufacturer', 'maker', 'company', 'brand']),
+        model_name: extractValue(apiData, ['model_name', 'model', 'modelName', 'model_number']),
         specs: extractSpecs(apiData)
     };
     
