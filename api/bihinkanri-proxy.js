@@ -150,63 +150,61 @@ export default async function handler(req, res) {
             productData = null;
         }
         
-        // 🔍 DEBUG: データ存在判定を一時的にスキップして必ず生データを返す
-        console.log('🚨 DEBUG MODE: データ存在判定をスキップして生データを強制返却');
+        // 🔍 実際のデータ存在判定に基づく処理
+        const hasRealData = hasProductInfo;
         
-        // const hasRealData = hasProductInfo;
-        // 
-        // if (!hasRealData) {
-        //     // データがない場合は仮データを返す（仕様書準拠）
-        //     console.log('❌ 製品データが見つかりません - 仮データを返します');
-        //     
-        //     const mockProductData = {
-        //         name: generateMockProductName(jan_code),
-        //         manufacturer_name: generateMockManufacturer(jan_code),
-        //         model_name: generateMockModel(jan_code),
-        //         specs: generateMockSpecs(jan_code)
-        //     };
-        //     
-        //     return res.status(200).json({
-        //         success: true,
-        //         janCode: jan_code,
-        //         data: mockProductData,
-        //         dataSource: 'mock',
-        //         debug: {
-        //             apiStatus: apiResponse?.status || 'no_response',
-        //             dataStructure: Object.keys(mockProductData),
-        //             hasRealData: false,
-        //             usedMockData: true,
-        //             note: 'Mock data generated according to API specification'
-        //         },
-        //         timestamp: new Date().toISOString()
-        //     });
-        // }
+        if (!hasRealData) {
+            // データがない場合は「見つからない」レスポンスを返す
+            console.log('❌ 製品データが見つかりません - 見つからない旨を返します');
+            
+            return res.status(200).json({
+                success: false,
+                janCode: jan_code,
+                data: null,
+                dataSource: 'api_no_data',
+                error: {
+                    type: 'ProductNotFound',
+                    message: `JANコード「${jan_code}」の製品情報が見つかりませんでした`,
+                    suggestion: '手動で製品情報を入力してください'
+                },
+                debug: {
+                    apiStatus: apiResponse?.status || 'no_response',
+                    hasRealData: false,
+                    usedMockData: false,
+                    foundFields: foundFields,
+                    hasProductInfo: hasProductInfo,
+                    note: 'No product data found in API response'
+                },
+                timestamp: new Date().toISOString()
+            });
+        }
         
-        // 🔍 DEBUG: 配列対応の生データ返却
-        console.log('🚨 配列対応の生データを返却します');
-        console.log('📊 返却するデータ:', JSON.stringify(data, null, 2));
+        // ✅ 実際のデータを正しい形式で返却
+        console.log('✅ 製品データが見つかりました - 変換して返却します');
+        console.log('📊 変換前データ:', JSON.stringify(data, null, 2));
         
         try {
             // データが配列の場合は最初の要素を使用、そうでなければそのまま
-            const processedData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            const targetData = Array.isArray(data) && data.length > 0 ? data[0] : data;
+            
+            // 統一形式に変換
+            const transformedData = transformApiData(targetData);
             
             const response = {
                 success: true,
                 janCode: jan_code,
-                data: processedData || {}, // 配列の場合は最初の要素を返す
-                dataSource: 'api_processed_debug',
+                data: transformedData,
+                dataSource: 'api_real_data',
                 debug: {
-                    note: 'API response processed for array format',
+                    note: 'Real product data found and transformed',
                     originalDataType: typeof data,
                     isArray: Array.isArray(data),
                     arrayLength: Array.isArray(data) ? data.length : 'not_array',
-                    processedDataType: typeof processedData,
-                    topLevelKeys: processedData ? Object.keys(processedData) : [],
                     apiStatus: apiResponse.status,
-                    hasRealData: hasProductInfo,
+                    hasRealData: true,
                     usedMockData: false,
                     foundFields: foundFields,
-                    hasProductInfo: hasProductInfo
+                    transformedFields: Object.keys(transformedData)
                 },
                 timestamp: new Date().toISOString()
             };
